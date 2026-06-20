@@ -1,0 +1,224 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-800 font-sans transition-colors duration-300;
+  }
+  
+  body.dark {
+    @apply bg-darkBg text-slate-200;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-200 rounded-full hover:bg-slate-300 transition-colors;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  @apply bg-slate-800 rounded-full hover:bg-slate-700;
+}
+
+/* Glassmorphism Styles */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.dark .glass-panel {
+  background: rgba(21, 27, 44, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Gradients */
+.gradient-text {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-500 via-secondary-500 to-indigo-500;
+}
+
+.gradient-bg {
+  @apply bg-gradient-to-r from-primary-600 to-secondary-600;
+}
+
+/* Animation utilities */
+@keyframes border-pulse {
+  0%, 100% { border-color: rgba(37, 99, 235, 0.2); }
+  50% { border-color: rgba(37, 99, 235, 0.6); }
+}
+
+.animate-border-pulse {
+  animation: border-pulse 2s infinite;
+}
+
+/* Recharts Tooltip Custom styling overrides */
+.recharts-default-tooltip {
+  @apply !bg-white !border-slate-100 !rounded-xl !shadow-premium !p-3 !text-sm !font-sans !transition-all !duration-150;
+}
+
+.dark .recharts-default-tooltip {
+  @apply !bg-darkCard !border-darkBorder !text-slate-200 !shadow-darkPremium;
+}
+
+/* Custom card flip */
+.card-perspective {
+  perspective: 1000px;
+}
+
+.card-inner {
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+}
+
+.card-flipped {
+  transform: rotateY(180deg);
+}
+
+.card-front, .card-back {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.card-back {
+  transform: rotateY(180deg);
+}
+
+/* Flex layout utilities for Sidebar and Footer */
+.main-content {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  transition: margin-left 0.3s ease;
+}
+
+@media (min-width: 768px) {
+  .main-content {
+    margin-left: 280px;
+  }
+}
+
+.page-content {
+  flex: 1;
+}
+
+.footer {
+  width: 100%;
+  position: relative;
+}
+
+/* Smooth global dark mode transitions */
+body, div, header, nav, main, footer, select, input, textarea, button, a {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+/* High-contrast text and element overrides for Dark Mode */
+.dark body {
+  color: #ffffff;
+}
+
+.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+  color: #ffffff !important;
+}
+
+.dark .text-slate-900, 
+.dark .text-slate-800, 
+.dark .text-slate-700, 
+.dark .text-gray-900, 
+.dark .text-gray-800, 
+.dark .text-gray-700 {
+  color: #ffffff !important;
+}
+
+.dark .text-slate-600, 
+.dark .text-slate-500, 
+.dark .text-slate-400, 
+.dark .text-gray-600, 
+.dark .text-gray-500, 
+.dark .text-gray-400 {
+  color: #d1d5db !important; /* text-gray-300 */
+}
+
+/* Secondary text requested class */
+.dark .text-gray-300 {
+  color: #d1d5db !important;
+}
+
+.dark label {
+  color: #d1d5db !important;
+}
+
+.dark input::placeholder, .dark textarea::placeholder {
+  color: #9ca3af !important;
+}
+
+.dark select option {
+  background-color: #151b2c !important; /* darkCard */
+  color: #ffffff !important;
+}
+
+.dark .recharts-default-tooltip * {
+  color: #f8fafc !important;
+}
+
+/* Print CSS Media Rules for PDF exports */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  
+  .navbar, 
+  .sidebar, 
+  nav, 
+  button, 
+  footer, 
+  .footer,
+  .print\:hidden {
+    display: none !important;
+  }
+  
+  .main-content {
+    margin-left: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+  
+  .page-content {
+    padding: 0 !important;
+  }
+  
+  .glass-panel, 
+  div, 
+  tr, 
+  td, 
+  th {
+    background: transparent !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  
+  tr {
+    page-break-inside: avoid;
+  }
+  
+  @page {
+    margin: 1.5cm;
+  }
+}
