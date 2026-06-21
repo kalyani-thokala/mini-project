@@ -3,8 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://kalyani-thokala.github.io/PrepMaster-AI",
-
+  "homepage": "https://kalyani-thokala.github.io/mini-project",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -13,9 +12,9 @@
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
   },
-
   "dependencies": {
     "axios": "^1.18.0",
+    "firebase": "^12.15.0",
     "framer-motion": "^12.40.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
@@ -26,7 +25,6 @@
     "react-router-dom": "^7.17.0",
     "recharts": "^3.8.1"
   },
-
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/react": "^19.2.14",
@@ -43,4 +41,3 @@
     "vite": "^8.0.12"
   }
 }
-

@@ -28,3 +28,5 @@ frontend/.env
 node_modules/
 dist/
 build/
+.firebase/.agents/
+skills-lock.json
