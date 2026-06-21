@@ -57,7 +57,6 @@ export default function AdminPanel() {
       const pRes = await API.get("/admin/problems");
       setProblems(pRes.data);
     } catch (error) {
-      console.error("Admin data load error:", error);
       toast.error("Failed to load admin panel data.");
     } finally {
       setLoading(false);
@@ -100,7 +99,6 @@ export default function AdminPanel() {
       resetQuestionForm();
       fetchData();
     } catch (error) {
-      console.error(error);
       toast.error("Failed to save question.");
     }
   };
@@ -124,7 +122,6 @@ export default function AdminPanel() {
       toast.success("Question deleted!");
       fetchData();
     } catch (error) {
-      console.error(error);
       toast.error("Failed to delete question.");
     }
   };
@@ -167,7 +164,6 @@ export default function AdminPanel() {
       resetProblemForm();
       fetchData();
     } catch (error) {
-      console.error(error);
       toast.error("Failed to save problem.");
     }
   };
@@ -189,7 +185,6 @@ export default function AdminPanel() {
       toast.success("Coding problem deleted!");
       fetchData();
     } catch (error) {
-      console.error(error);
       toast.error("Failed to delete coding problem.");
     }
   };

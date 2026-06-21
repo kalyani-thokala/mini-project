@@ -1,13 +1,21 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useCallback, useContext, useState, useEffect } from "react";
 import API from "../services/api";
 import toast from "react-hot-toast";
+import { useAuth } from "./AuthContext";
 
 const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
+  const { user: authUser, signOut: authSignOut, loading: authLoading } = useAuth();
+
   const [user, setUser] = useState(() => {
-    const savedUser = localStorage.getItem("prepmaster_user");
-    return savedUser ? JSON.parse(savedUser) : null;
+    try {
+      const savedUser = localStorage.getItem("prepmaster_user");
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch {
+      localStorage.removeItem("prepmaster_user");
+      return null;
+    }
   });
 
   const [token, setToken] = useState(() => {
@@ -15,15 +23,15 @@ export const AppProvider = ({ children }) => {
   });
 
   const [theme, setTheme] = useState(() => {
-    return localStorage.getItem("prepmaster_theme") || "dark"; // Default to dark for premium edtech feel
+    return localStorage.getItem("prepmaster_theme") || "dark";
   });
 
   const [notifications, setNotifications] = useState([]);
-  const [loadingUser, setLoadingUser] = useState(true);
+  const [loadingUser, setLoadingUser] = useState(authLoading);
 
-  // Sync HTML document theme class
   useEffect(() => {
     const root = window.document.documentElement;
+
     if (theme === "dark") {
       root.classList.add("dark");
       document.body.classList.add("dark");
@@ -31,41 +39,80 @@ export const AppProvider = ({ children }) => {
       root.classList.remove("dark");
       document.body.classList.remove("dark");
     }
+
     localStorage.setItem("prepmaster_theme", theme);
   }, [theme]);
 
-  // Load profile and notifications if logged in
+  const clearBackendSession = useCallback(() => {
+    setToken("");
+    setUser(authUser || null);
+    setNotifications([]);
+    localStorage.removeItem("prepmaster_token");
+
+    if (authUser) {
+      localStorage.setItem("prepmaster_user", JSON.stringify(authUser));
+    } else {
+      localStorage.removeItem("prepmaster_user");
+    }
+  }, [authUser]);
+
   useEffect(() => {
     const initializeUser = async () => {
-      if (token) {
+      if (!authLoading && token && !authUser) {
         try {
-          // Verify token and fetch profile
           const res = await API.get("/auth/profile");
           setUser(res.data);
           localStorage.setItem("prepmaster_user", JSON.stringify(res.data));
-          
-          // Fetch notifications
+
           const notifRes = await API.get("/notifications");
           setNotifications(notifRes.data);
-        } catch (error) {
-          console.error("Token verification failed:", error);
-          logout();
+        } catch {
+          clearBackendSession();
         }
       }
-      setLoadingUser(false);
+
+      if (!authLoading) {
+        setLoadingUser(false);
+      }
     };
 
     initializeUser();
-  }, [token]);
+  }, [token, authLoading, authUser, clearBackendSession]);
+
+  useEffect(() => {
+    try {
+      const justRegistered = sessionStorage.getItem("prepmaster_just_registered");
+      if (justRegistered) {
+        // Skip auto-login when the user has just registered and is being redirected to login.
+        sessionStorage.removeItem("prepmaster_just_registered");
+        return;
+      }
+    } catch {
+      // ignore session storage errors
+    }
+
+    const syncId = window.setTimeout(() => {
+      if (authUser) {
+        setUser(authUser);
+        localStorage.setItem("prepmaster_user", JSON.stringify(authUser));
+        setLoadingUser(false);
+      } else {
+        setUser(null);
+        localStorage.removeItem("prepmaster_user");
+      }
+    }, 0);
+
+    return () => window.clearTimeout(syncId);
+  }, [authUser]);
 
   const toggleTheme = () => {
     setTheme((prev) => (prev === "light" ? "dark" : "light"));
   };
 
   const login = (userData, jwtToken) => {
-    setToken(jwtToken);
+    setToken(jwtToken || "");
     setUser(userData);
-    localStorage.setItem("prepmaster_token", jwtToken);
+    localStorage.setItem("prepmaster_token", jwtToken || "");
     localStorage.setItem("prepmaster_user", JSON.stringify(userData));
     toast.success("Welcome back!", {
       style: {
@@ -76,12 +123,18 @@ export const AppProvider = ({ children }) => {
     });
   };
 
-  const logout = () => {
+  const logout = async () => {
     setToken("");
     setUser(null);
     setNotifications([]);
     localStorage.removeItem("prepmaster_token");
     localStorage.removeItem("prepmaster_user");
+
+    if (authSignOut) {
+      await authSignOut();
+      return;
+    }
+
     toast.success("Logged out successfully.", {
       style: {
         borderRadius: "12px",
@@ -93,11 +146,12 @@ export const AppProvider = ({ children }) => {
 
   const fetchNotifications = async () => {
     if (!token) return;
+
     try {
       const res = await API.get("/notifications");
       setNotifications(res.data);
-    } catch (error) {
-      console.error("Failed to fetch notifications:", error);
+    } catch {
+      setNotifications([]);
     }
   };
 
@@ -107,8 +161,8 @@ export const AppProvider = ({ children }) => {
       setNotifications((prev) =>
         prev.map((n) => (n._id === id ? { ...n, read: true } : n))
       );
-    } catch (error) {
-      console.error("Failed to mark notification as read:", error);
+    } catch {
+      toast.error("Notification could not be updated.");
     }
   };
 
@@ -117,8 +171,8 @@ export const AppProvider = ({ children }) => {
       await API.put("/notifications/read-all");
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       toast.success("All marked as read");
-    } catch (error) {
-      console.error("Failed to mark all notifications as read:", error);
+    } catch {
+      toast.error("Notifications could not be updated.");
     }
   };
 

@@ -41,7 +41,6 @@ export default function Settings() {
       updateUserProfile(res.data.user);
       toast.success("Profile details updated!");
     } catch (error) {
-      console.error(error);
       toast.error(error?.response?.data?.message || "Failed to update profile");
     } finally {
       setUpdatingProfile(false);
@@ -76,7 +75,6 @@ export default function Settings() {
       setNewPassword("");
       setConfirmPassword("");
     } catch (error) {
-      console.error(error);
       toast.error(error?.response?.data?.message || "Failed to change password");
     } finally {
       setUpdatingPassword(false);
@@ -90,7 +88,6 @@ export default function Settings() {
       updateUserProfile(res.data.user);
       toast.success("Email verified successfully!");
     } catch (error) {
-      console.error(error);
       toast.error(error?.response?.data?.message || "Failed to verify email");
     } finally {
       setVerifyingEmail(false);
@@ -111,7 +108,6 @@ export default function Settings() {
           : "You have opted out of the leaderboard."
       );
     } catch (error) {
-      console.error(error);
       toast.error("Failed to toggle leaderboard settings");
     } finally {
       setTogglingLeaderboard(false);

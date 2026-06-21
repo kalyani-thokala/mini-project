@@ -99,7 +99,6 @@ export default function InterviewSessionPage() {
       toast.success("AI interview assessment completed!");
       navigate(`/interviews/result/${res.data._id}`);
     } catch (error) {
-      console.error(error);
       toast.error("Failed to compile evaluation review. Try again.");
     } finally {
       setLoading(false);
@@ -150,7 +149,6 @@ export default function InterviewSessionPage() {
         }
         setCameraStatus("Camera Connected");
       } catch (err) {
-        console.error("Camera connection failed:", err);
         setCameraStatus("Camera Disabled");
         addWarning("Camera disconnected.");
       }
@@ -163,7 +161,6 @@ export default function InterviewSessionPage() {
         // Release the initial probe stream immediately (we will use WebSpeech API for transcription)
         audioStream.getTracks().forEach((track) => track.stop());
       } catch (err) {
-        console.error("Microphone connection failed:", err);
         setMicPermission("denied");
         addWarning("Microphone disconnected.");
       }
@@ -206,7 +203,6 @@ export default function InterviewSessionPage() {
       };
 
       rec.onerror = (event) => {
-        console.error("Speech recognition error:", event.error);
         if (event.error === "not-allowed") {
           setMicPermission("denied");
           addWarning("Microphone disconnected.");
@@ -250,7 +246,6 @@ export default function InterviewSessionPage() {
           addWarning("Microphone disconnected.");
         }
       } catch (err) {
-        console.error("Device enumeration failed:", err);
       }
     };
 
@@ -325,7 +320,6 @@ export default function InterviewSessionPage() {
         setIsRecording(true);
       }
     } catch (err) {
-      console.error("Start recognition error:", err);
     }
   };
 
@@ -336,7 +330,6 @@ export default function InterviewSessionPage() {
         setIsRecording(false);
       }
     } catch (err) {
-      console.error("Stop recognition error:", err);
     }
   };
 

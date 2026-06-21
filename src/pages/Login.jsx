@@ -1,14 +1,23 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
+import { auth } from "../firebase";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { useApp } from "../context/AppContext";
+import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
 import { FiMail, FiLock } from "react-icons/fi";
+import { FcGoogle } from "react-icons/fc";
 import { motion } from "framer-motion";
+import { useLocation } from "react-router-dom";
+import { loginUser } from "../services/authService";
 
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useApp();
+  const { signInWithGoogle, authActionLoading } = useAuth();
+  const location = useLocation();
+  const redirectTo = location.state?.from?.pathname || "/dashboard";
+  const [registeredMsg] = useState("");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,17 +29,52 @@ export default function Login() {
     try {
       setLoading(true);
 
-      const response = await axios.post("http://localhost:5000/api/auth/login", {
-        email,
-        password
-      });
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
+
+      let jwtToken = "";
+      let loggedUser = {
+        uid: firebaseUser.uid,
+        fullName: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "PrepMaster User",
+        email: firebaseUser.email || "",
+        avatar: firebaseUser.photoURL || "",
+        photoURL: firebaseUser.photoURL || ""
+      };
+
+      try {
+        const backendRes = await loginUser({ email, password });
+        jwtToken = backendRes.token;
+        if (backendRes.user) {
+          loggedUser = {
+            ...loggedUser,
+            ...backendRes.user,
+            uid: firebaseUser.uid
+          };
+        }
+      } catch {
+        // Firebase remains the source of truth; the API client will send its ID token.
+      }
 
       toast.success("Successfully logged in!");
-      login(response.data.user, response.data.token);
-      navigate("/dashboard");
+      login(loggedUser, jwtToken);
+      navigate(redirectTo, { replace: true });
     } catch (error) {
-      console.error(error);
-      toast.error(error?.response?.data?.message || "Invalid email or password");
+      const message =
+        error?.message || "Invalid email or password";
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setLoading(true);
+      const googleUser = await signInWithGoogle();
+      login(googleUser, "");
+      navigate(redirectTo, { replace: true });
+    } catch {
+      // AuthContext displays a user-facing Firebase error.
     } finally {
       setLoading(false);
     }
@@ -56,7 +100,36 @@ export default function Login() {
           </p>
         </div>
 
+        {registeredMsg && (
+          <div className="mb-4 p-3 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100 text-sm font-semibold">
+            {registeredMsg}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Google Sign-In */}
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            disabled={loading || authActionLoading}
+            className="w-full flex items-center justify-center gap-3 py-3.5 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100 rounded-2xl shadow-sm transition-all font-semibold text-sm"
+          >
+            {loading || authActionLoading ? (
+              <div className="w-5 h-5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <>
+                <FcGoogle className="w-5 h-5" />
+                <span>Sign in with Google</span>
+              </>
+            )}
+          </button>
+
+          <div className="flex items-center justify-between text-xs text-slate-400 font-semibold">
+            <span className="border-b border-slate-200 dark:border-slate-700 w-full mr-3" />
+            <span>OR</span>
+            <span className="border-b border-slate-200 dark:border-slate-700 w-full ml-3" />
+          </div>
+
           {/* Email */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">

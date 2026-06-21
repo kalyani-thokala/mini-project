@@ -1,4 +1,8 @@
-import { generateMCQQuiz } from "../services/aiService.js";
+import {
+  generateMCQQuiz,
+  generateInterviewFollowUp,
+  generateRoleTips
+} from "../services/aiService.js";
 
 export const generateQuiz = async (req, res) => {
   try {
@@ -48,4 +52,24 @@ export const generateQuiz = async (req, res) => {
 
     res.json(fallbackQuestions);
   }
+};
+
+export const generateFollowUp = async (req, res) => {
+  const { question, answer } = req.body;
+  if (!question || !answer) {
+    return res.status(400).json({ message: "Question and answer are required" });
+  }
+
+  const followUp = await generateInterviewFollowUp(question, answer);
+  return res.json({ followUp });
+};
+
+export const generateTips = async (req, res) => {
+  const { role } = req.body;
+  if (!role) {
+    return res.status(400).json({ message: "Role is required" });
+  }
+
+  const tips = await generateRoleTips(role);
+  return res.json({ tips });
 };

@@ -1,14 +1,27 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
-import { useApp } from "../context/AppContext";
+import { auth, db } from "../firebase";
+import {
+  createUserWithEmailAndPassword,
+  signOut as firebaseSignOut
+} from "firebase/auth";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import toast from "react-hot-toast";
 import { FiUser, FiMail, FiLock } from "react-icons/fi";
 import { motion } from "framer-motion";
+import { registerUser } from "../services/authService";
+
+const withTimeout = (promise, ms) => {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Network request timed out. Please try again.")), ms)
+    )
+  ]);
+};
 
 export default function Register() {
   const navigate = useNavigate();
-  const { login } = useApp();
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -19,7 +32,6 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Client-side validations
     if (fullName.trim().length < 3) {
       return toast.error("Name must be at least 3 characters long");
     }
@@ -33,7 +45,6 @@ export default function Register() {
       return toast.error("Password must be at least 8 characters long");
     }
 
-    // Complexity check: uppercase, lowercase, number, special char
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
     if (!passwordRegex.test(password)) {
       return toast.error("Password must contain uppercase, lowercase, number, and a special character");
@@ -43,20 +54,51 @@ export default function Register() {
       return toast.error("Passwords do not match");
     }
 
+    setLoading(true);
     try {
-      setLoading(true);
+      const userCredential = await withTimeout(
+        createUserWithEmailAndPassword(auth, email, password),
+        8000
+      );
+      const firebaseUser = userCredential.user;
 
-      const response = await axios.post("http://localhost:5000/api/auth/register", {
+      // Save user profile to Firestore asynchronously in background (non-blocking)
+      setDoc(doc(db, "users", firebaseUser.uid), {
+        uid: firebaseUser.uid,
+        name: fullName,
         fullName,
-        email,
-        password
+        email: firebaseUser.email,
+        photoURL: firebaseUser.photoURL || "",
+        avatar: firebaseUser.photoURL || "",
+        createdAt: serverTimestamp()
+      }).catch(() => {
+        toast.error("Account created, but the Firebase profile sync is pending.");
       });
 
-      toast.success("Registration successful. Please login to continue.");
-      navigate("/login");
+      // Register user on backend MongoDB with timeout
+      try {
+        await withTimeout(
+          registerUser({ fullName, email, password }),
+          8000
+        );
+      } catch {
+        // The backend can create this user after verifying the Firebase ID token.
+      }
+
+      await withTimeout(firebaseSignOut(auth), 5000);
+
+      toast.success("Registration Successful! Please login to continue.");
+      // Set a short-lived session flag to prevent the app from auto-logging-in
+      try {
+        sessionStorage.setItem("prepmaster_just_registered", "1");
+      } catch {
+        // Private browsing can disable sessionStorage; navigation still works.
+      }
+      // Redirect to login page with a flag so Login can show a persistent message
+      navigate("/login?registered=1");
     } catch (error) {
-      console.error(error);
-      toast.error(error?.response?.data?.message || "Registration failed. Try again.");
+      const message = error?.message || "Registration failed. Try again.";
+      toast.error(message);
     } finally {
       setLoading(false);
     }

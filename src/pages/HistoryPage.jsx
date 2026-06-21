@@ -27,7 +27,6 @@ export default function HistoryPage() {
         setInterviews(interviewsRes.data);
         setCoding(codingRes.data);
       } catch (error) {
-        console.error(error);
         toast.error("Failed to load your history logs.");
       } finally {
         setLoading(false);

@@ -72,7 +72,6 @@ export default function MockInterview() {
       };
 
       rec.onerror = (e) => {
-        console.error("Speech Recognition Error:", e);
         setIsListening(false);
       };
 
@@ -125,7 +124,6 @@ export default function MockInterview() {
       setIsFinished(false);
       toast.success("Mock session started! Keep an eye on the clock.");
     } catch (err) {
-      console.error(err);
       toast.error("AI Generation failed. Starting offline session.");
       // Fallback
       const qList = getMockQuestions(role, difficulty, 'Mixed', 5);

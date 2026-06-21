@@ -17,7 +17,6 @@ export default function ExamResultPage() {
         const res = await API.get(`/exams/${id}`);
         setResult(res.data);
       } catch (error) {
-        console.error("Failed to load exam result details:", error);
       } finally {
         setLoading(false);
       }

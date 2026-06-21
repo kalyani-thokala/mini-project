@@ -19,7 +19,6 @@ export default function CodingPage() {
         const res = await API.get("/code/problems");
         setProblems(res.data);
       } catch (error) {
-        console.error("Failed to fetch coding challenges:", error);
       } finally {
         setLoading(false);
       }

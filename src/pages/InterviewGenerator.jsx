@@ -56,7 +56,6 @@ export default function InterviewGenerator() {
       try {
         aiTips = await generateAIRoleTips(params.role);
       } catch (tipError) {
-        console.error("Tips generation failed:", tipError);
         aiTips = getMockTips(params.role);
       }
 
@@ -67,7 +66,6 @@ export default function InterviewGenerator() {
 
       toast.success("Interview questions generated successfully!");
     } catch (error) {
-      console.error("AI Generation Error:", error);
 
       toast.error(
         "AI service unavailable. Loading offline interview database."

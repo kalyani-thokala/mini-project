@@ -15,18 +15,40 @@ import adminRoutes from "./routes/adminRoutes.js";
 import searchRoutes from "./routes/searchRoutes.js";
 import leaderboardRoutes from "./routes/leaderboardRoutes.js";
 import historyRoutes from "./routes/historyRoutes.js";
+import quizRoutes from "./routes/quizRoutes.js";
 
 import { securityHeaders, rateLimiter, sanitizeInput } from "./middleware/security.js";
 
 dotenv.config();
-connectDB();
+await connectDB();
 
 const app = express();
 
-// Middleware
+const defaultAllowedOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "https://kalyani-thokala.github.io"
+];
+
+const allowedOrigins = (process.env.CORS_ORIGINS || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const corsOrigins = allowedOrigins.length ? allowedOrigins : defaultAllowedOrigins;
+
 app.use(cors({
-  origin: "*", // IMPORTANT for frontend connection (change later in production)
-  credentials: true
+  origin(origin, callback) {
+    if (!origin || corsOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error("Origin is not allowed by CORS"));
+  },
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: false
 }));
 
 app.use(express.json());
@@ -56,10 +78,19 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/leaderboard", leaderboardRoutes);
 app.use("/api/history", historyRoutes);
+app.use("/api/quiz", quizRoutes);
 
 // 404 handler
 app.use("*", (req, res) => {
   res.status(404).json({ message: "API Route Not Found" });
+});
+
+app.use((error, req, res, next) => {
+  if (error?.message === "Origin is not allowed by CORS") {
+    return res.status(403).json({ message: error.message });
+  }
+
+  return next(error);
 });
 
 const PORT = process.env.PORT || 5000;

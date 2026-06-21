@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios";
+import API from "../services/api";
 import toast from "react-hot-toast";
 import { FiMail, FiArrowLeft } from "react-icons/fi";
 import { motion } from "framer-motion";
@@ -15,15 +15,14 @@ export default function ForgotPassword() {
     e.preventDefault();
     try {
       setLoading(true);
-      const res = await axios.post("http://localhost:5000/api/auth/forgot-password", { email });
+      const res = await API.post("/auth/forgot-password", { email });
       toast.success("Reset link generated!");
       setSent(true);
       if (res.data.token) {
         setResetToken(res.data.token);
       }
     } catch (error) {
-      console.error(error);
-      toast.error(error?.response?.data?.message || "Failed to submit reset request.");
+      toast.error(error?.userMessage || error?.response?.data?.message || "Failed to submit reset request.");
     } finally {
       setLoading(false);
     }
@@ -88,7 +87,8 @@ export default function ForgotPassword() {
                 to={`/reset-password/${resetToken}`}
                 className="text-primary-500 hover:underline break-all block font-mono"
               >
-                http://localhost:5173/reset-password/{resetToken}
+                {window.location.origin}
+                {import.meta.env.BASE_URL}#/reset-password/{resetToken}
               </Link>
             </div>
             <Link

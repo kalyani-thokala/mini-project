@@ -30,7 +30,6 @@ export default function InterviewResultPage() {
         const res = await API.get(`/interviews/${id}`);
         setResult(res.data);
       } catch (error) {
-        console.error("Failed to load interview results:", error);
       } finally {
         setLoading(false);
       }

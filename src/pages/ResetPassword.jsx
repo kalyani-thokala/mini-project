@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import axios from "axios";
+import API from "../services/api";
 import toast from "react-hot-toast";
 import { FiLock, FiArrowLeft, FiCheck } from "react-icons/fi";
 import { motion } from "framer-motion";
@@ -33,7 +33,7 @@ export default function ResetPassword() {
 
     try {
       setLoading(true);
-      await axios.post("http://localhost:5000/api/auth/reset-password", {
+      await API.post("/auth/reset-password", {
         token,
         password: newPassword
       });
@@ -43,8 +43,7 @@ export default function ResetPassword() {
         navigate("/login");
       }, 3000);
     } catch (error) {
-      console.error(error);
-      toast.error(error?.response?.data?.message || "Failed to reset password.");
+      toast.error(error?.userMessage || error?.response?.data?.message || "Failed to reset password.");
     } finally {
       setLoading(false);
     }

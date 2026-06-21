@@ -337,7 +337,7 @@ Return ONLY a valid JSON array of objects matching this exact schema:
     const text = result.response.text();
     const cleaned = sanitizeJSON(text);
     const parsed = JSON.parse(cleaned);
-    const formatted = parsed.map((q, i) => ({
+    const formatted = parsed.map((q) => ({
       ...q,
       category,
       difficulty,
@@ -348,5 +348,40 @@ Return ONLY a valid JSON array of objects matching this exact schema:
   } catch (error) {
     console.error("Gemini Exam Questions Generation Error:", error);
     throw error;
+  }
+}
+
+export async function generateMCQQuiz(role, difficulty, count) {
+  return generateExamQuestionsAi(role, difficulty, count);
+}
+
+export async function generateInterviewFollowUp(question, answer) {
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const prompt = `Write one concise interview follow-up question based on this exchange. Return plain text only.\nQuestion: ${question}\nAnswer: ${answer}`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    return result.response.text().trim();
+  } catch {
+    return "What trade-offs did you consider, and how would you improve your approach?";
+  }
+}
+
+export async function generateRoleTips(role) {
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const prompt = `Return exactly five concise preparation tips for a ${role} interview as a JSON array of strings. Return JSON only.`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const tips = JSON.parse(sanitizeJSON(result.response.text()));
+    return Array.isArray(tips) ? tips.slice(0, 5) : [];
+  } catch {
+    return [
+      `Review the core responsibilities and tools used by a ${role}.`,
+      "Prepare two project examples with measurable outcomes.",
+      "Practice explaining technical decisions and trade-offs.",
+      "Rehearse concise answers using the STAR structure.",
+      "Prepare thoughtful questions about the team and role."
+    ];
   }
 }

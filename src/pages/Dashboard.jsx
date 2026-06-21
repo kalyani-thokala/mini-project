@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import API from "../services/api";
+import { useCallback, useEffect, useState } from "react";
+import API, { API_BASE_URL } from "../services/api";
 import { Link } from "react-router-dom";
 import { useApp } from "../context/AppContext";
 import {
@@ -10,8 +10,7 @@ import {
   FiChevronRight,
   FiAward,
   FiZap,
-  FiClock,
-  FiCheckCircle
+  FiClock
 } from "react-icons/fi";
 import {
   AreaChart,
@@ -25,27 +24,93 @@ import {
 import { motion } from "framer-motion";
 import LoadingSkeleton from "../components/LoadingSkeleton";
 
+const DEFAULT_DASHBOARD_STATS = {
+  totalExams: null,
+  totalInterviews: null,
+  totalCodingChallenges: null,
+  averageScore: null,
+  learningStreak: null,
+  practiceHours: null,
+  completedTopicsCount: null,
+  recommendedTopics: [],
+  recentActivities: []
+};
+
+const DASHBOARD_CACHE_KEY = "prepmaster_dashboard_stats_v2";
+
+const normalizeDashboardStats = (data) => ({
+  ...DEFAULT_DASHBOARD_STATS,
+  ...(data || {}),
+  hasRealData: Boolean(data),
+  recommendedTopics: Array.isArray(data?.recommendedTopics) ? data.recommendedTopics : [],
+  recentActivities: Array.isArray(data?.recentActivities) ? data.recentActivities : []
+});
+
+const formatMetric = (value, suffix = "") => {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return "N/A";
+  }
+
+  return `${value}${suffix}`;
+};
+
+const loadCachedStats = () => {
+  try {
+    const cached = localStorage.getItem(DASHBOARD_CACHE_KEY);
+    if (!cached) return null;
+    return normalizeDashboardStats(JSON.parse(cached));
+  } catch {
+    localStorage.removeItem(DASHBOARD_CACHE_KEY);
+    return null;
+  }
+};
+
 export default function Dashboard() {
-  const { user } = useApp();
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { user, token } = useApp();
+  const cachedStats = loadCachedStats();
+  const [stats, setStats] = useState(cachedStats || normalizeDashboardStats(null));
+  const [loading, setLoading] = useState(!cachedStats);
   const [error, setError] = useState("");
+  const [isCached, setIsCached] = useState(Boolean(cachedStats));
+  const [retrying, setRetrying] = useState(false);
+
+  const fetchDashboardData = useCallback(async ({ showLoader = true } = {}) => {
+    try {
+      if (showLoader) {
+        setLoading(true);
+      }
+      setRetrying(true);
+      setError("");
+
+      const res = await API.get("/dashboard");
+      const normalizedStats = normalizeDashboardStats(res.data);
+      setStats(normalizedStats);
+      setIsCached(false);
+      localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify(normalizedStats));
+      return normalizedStats;
+    } catch (err) {
+      const cachedStats = loadCachedStats();
+      const fallbackStats = normalizeDashboardStats(null);
+      setStats(cachedStats || fallbackStats);
+      setIsCached(Boolean(cachedStats));
+      setError(
+        err?.userMessage ||
+          "Dashboard metrics are unavailable. Confirm the backend is deployed, CORS allows this origin, and your session is valid."
+      );
+      return cachedStats || fallbackStats;
+    } finally {
+      setLoading(false);
+      setRetrying(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        const res = await API.get("/dashboard");
-        setStats(res.data);
-      } catch (err) {
-        console.error("Dashboard loading error:", err);
-        setError("Failed to load dashboard metrics. Please try again.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchDashboardData();
-  }, []);
+    const requestId = window.setTimeout(() => {
+      fetchDashboardData();
+    }, 0);
+
+    return () => window.clearTimeout(requestId);
+  }, [fetchDashboardData, token, user?.uid]);
 
   if (loading) {
     return (
@@ -65,67 +130,102 @@ export default function Dashboard() {
     );
   }
 
-  if (error) {
+  const ErrorBanner = () => {
+    if (!error) return null;
+
     return (
-      <div className="p-6 text-center text-rose-500 font-bold bg-rose-50 dark:bg-rose-950/20 rounded-2xl border border-rose-100 dark:border-rose-900">
-        {error}
+      <div className="p-4 rounded-2xl border border-rose-100 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/20 mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div>
+          <p className="text-sm font-bold text-rose-600 dark:text-rose-300">
+            {isCached ? "Showing cached dashboard metrics." : "Unable to load dashboard metrics."}
+          </p>
+          <p className="text-xs font-semibold text-rose-500 dark:text-rose-300/80 mt-1">
+            {error}
+          </p>
+          {!API_BASE_URL && (
+            <p className="text-xs font-semibold text-rose-500 dark:text-rose-300/80 mt-1">
+              Set VITE_API_BASE_URL to your deployed backend API URL before building for GitHub Pages.
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => fetchDashboardData({ showLoader: false })}
+          disabled={retrying}
+          className="px-4 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold disabled:opacity-70"
+        >
+          {retrying ? "Retrying..." : "Retry"}
+        </button>
       </div>
     );
-  }
+  };
 
-  const examsCount = stats?.totalExams || 0;
-  const interviewsCount = stats?.totalInterviews || 0;
-  const codingCount = stats?.totalCodingChallenges || 0;
-  const avgScore = stats?.averageScore || 0;
+  const examsCount = Number(stats?.totalExams ?? 0);
+  const interviewsCount = Number(stats?.totalInterviews ?? 0);
+  const codingCount = Number(stats?.totalCodingChallenges ?? 0);
+  const avgScore = stats?.averageScore !== null && stats?.averageScore !== undefined ? Number(stats.averageScore) : null;
 
-  const readinessScore = Math.min(
-    100,
-    Math.round(
-      avgScore * 0.4 +
-      Math.min(100, examsCount * 10) * 0.2 +
-      Math.min(100, interviewsCount * 15) * 0.2 +
-      Math.min(100, codingCount * 10) * 0.2
-    )
-  );
+  const hasReadinessInputs =
+    avgScore !== null ||
+    examsCount > 0 ||
+    interviewsCount > 0 ||
+    codingCount > 0;
 
-  let readinessLevel = "Developing Candidate (Level D)";
-  let readinessColor = "text-rose-500 bg-rose-500/10 border border-rose-500/20";
-  if (readinessScore >= 80) {
-    readinessLevel = "Premium Elite (Level A)";
-    readinessColor = "text-emerald-500 bg-emerald-500/10 border border-emerald-500/20";
-  } else if (readinessScore >= 60) {
-    readinessLevel = "Highly Competitive (Level B)";
-    readinessColor = "text-blue-500 bg-blue-500/10 border border-blue-500/20";
-  } else if (readinessScore >= 40) {
-    readinessLevel = "Job Ready (Level C)";
-    readinessColor = "text-amber-500 bg-amber-500/10 border border-amber-500/20";
+  const readinessScore = hasReadinessInputs
+    ? Math.min(
+        100,
+        Math.round(
+          (avgScore ?? 0) * 0.4 +
+            Math.min(100, examsCount * 10) * 0.2 +
+            Math.min(100, interviewsCount * 15) * 0.2 +
+            Math.min(100, codingCount * 10) * 0.2
+        )
+      )
+    : null;
+
+  let readinessLevel = "Not available yet";
+  let readinessColor = "text-slate-500 bg-slate-500/10 border border-slate-500/20";
+  if (readinessScore !== null) {
+    if (readinessScore >= 80) {
+      readinessLevel = "Premium Elite (Level A)";
+      readinessColor = "text-emerald-500 bg-emerald-500/10 border border-emerald-500/20";
+    } else if (readinessScore >= 60) {
+      readinessLevel = "Highly Competitive (Level B)";
+      readinessColor = "text-blue-500 bg-blue-500/10 border border-blue-500/20";
+    } else if (readinessScore >= 40) {
+      readinessLevel = "Job Ready (Level C)";
+      readinessColor = "text-amber-500 bg-amber-500/10 border border-amber-500/20";
+    } else {
+      readinessLevel = "Developing Candidate (Level D)";
+      readinessColor = "text-rose-500 bg-rose-500/10 border border-rose-500/20";
+    }
   }
 
   const statCards = [
     {
       title: "Exams Attempted",
-      value: stats.totalExams,
+      value: formatMetric(stats.totalExams),
       icon: <FiBookOpen className="w-6 h-6" />,
       color: "from-blue-500/20 to-indigo-500/20 text-blue-500 border-blue-500/10",
       link: "/exams"
     },
     {
       title: "Interviews Done",
-      value: stats.totalInterviews,
+      value: formatMetric(stats.totalInterviews),
       icon: <FiCpu className="w-6 h-6" />,
       color: "from-purple-500/20 to-pink-500/20 text-purple-500 border-purple-500/10",
       link: "/interviews"
     },
     {
       title: "Coding Submissions",
-      value: stats.totalCodingChallenges,
+      value: formatMetric(stats.totalCodingChallenges),
       icon: <FiTerminal className="w-6 h-6" />,
       color: "from-emerald-500/20 to-teal-500/20 text-emerald-500 border-emerald-500/10",
       link: "/coding"
     },
     {
       title: "Average Score",
-      value: `${stats.averageScore}%`,
+      value: formatMetric(stats.averageScore, "%"),
       icon: <FiTrendingUp className="w-6 h-6" />,
       color: "from-amber-500/20 to-orange-500/20 text-amber-500 border-amber-500/10",
       link: "/analytics"
@@ -133,24 +233,22 @@ export default function Dashboard() {
   ];
 
   // Format activity logs as data points for Recharts (fallback if none)
-  const chartData = stats.recentActivities
+  const examChartPoints = stats.recentActivities
     .filter((a) => a.type === "exam")
-    .map((a, i) => ({
-      name: `Ex ${i + 1}`,
-      score: parseInt(a.description.match(/\d+/)?.[0]) || 70
-    }))
+    .map((a, i) => {
+      const percentage = a.description.match(/\((\d+(?:\.\d+)?)%\)/)?.[1];
+      return {
+        name: `Ex ${i + 1}`,
+        score: percentage ? Number(percentage) : null
+      };
+    })
     .reverse();
 
-  if (chartData.length === 0) {
-    // Dummy chart points for empty states
-    chartData.push(
-      { name: "Start", score: 0 },
-      { name: "Target", score: 100 }
-    );
-  }
+  const chartData = examChartPoints.length > 0 ? examChartPoints : [{ name: "No exam data", score: null }];
 
   return (
     <div className="space-y-8 pb-12">
+      {ErrorBanner()}
       {/* Welcome Hero */}
       <div className="p-8 rounded-3xl bg-gradient-to-r from-primary-600 to-secondary-500 text-white relative overflow-hidden shadow-lg shadow-primary-500/10">
         <div className="absolute top-[-50%] right-[-10%] w-[50%] h-[150%] rounded-full bg-white/5 blur-3xl pointer-events-none" />
@@ -181,7 +279,7 @@ export default function Dashboard() {
           </div>
           <div className="mt-4 flex items-baseline gap-2">
             <span className="text-3xl font-black text-slate-800 dark:text-white">
-              {readinessScore}%
+              {formatMetric(readinessScore, "%")}
             </span>
             <span className="text-xs text-slate-400 font-bold">estimated rank</span>
           </div>
@@ -189,7 +287,7 @@ export default function Dashboard() {
           <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full mt-4 overflow-hidden">
             <div
               className="bg-gradient-to-r from-primary-500 to-secondary-500 h-full rounded-full"
-              style={{ width: `${readinessScore}%` }}
+              style={{ width: `${readinessScore || 0}%` }}
             />
           </div>
         </div>
@@ -201,7 +299,7 @@ export default function Dashboard() {
               Practice Streak
             </h4>
             <h3 className="text-3xl font-black text-slate-800 dark:text-white flex items-baseline gap-1">
-              <span>{stats.learningStreak || 0}</span>
+              <span>{formatMetric(stats.learningStreak)}</span>
               <span className="text-xs text-slate-400 font-bold">days active</span>
             </h3>
             <p className="text-[10px] text-slate-400 font-bold mt-1">
@@ -220,11 +318,11 @@ export default function Dashboard() {
               Practice Investment
             </h4>
             <h3 className="text-3xl font-black text-slate-800 dark:text-white flex items-baseline gap-1">
-              <span>{stats.practiceHours || 0}</span>
+              <span>{formatMetric(stats.practiceHours)}</span>
               <span className="text-xs text-slate-400 font-bold">hours logged</span>
             </h3>
             <p className="text-[10px] text-slate-400 font-bold mt-1">
-              Completed {stats.completedTopicsCount || 0} / 43 critical subtopics
+              Completed {formatMetric(stats.completedTopicsCount)} / 43 critical subtopics
             </p>
           </div>
           <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 flex items-center justify-center font-bold shadow-md shadow-indigo-500/5">

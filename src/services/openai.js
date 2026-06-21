@@ -1,6 +1,4 @@
-import axios from "axios";
-
-const API_URL = "http://localhost:5000/api";
+import API from "./api";
 
 export async function generateAIQuestions(
   role,
@@ -8,56 +6,29 @@ export async function generateAIQuestions(
   type,
   count
 ) {
-  try {
-    const response = await axios.post(
-      `${API_URL}/quiz/generate`,
-      {
-        role,
-        difficulty,
-        type,
-        count,
-      }
-    );
+  const response = await API.post("/quiz/generate", {
+    role,
+    difficulty,
+    type,
+    count
+  });
 
-    return response.data;
-  } catch (error) {
-    console.error(error);
-    throw error;
-  }
+  return response.data;
 }
 
 export async function generateAIFollowUp(
   question,
   answer
 ) {
-  try {
-    const response = await axios.post(
-      `${API_URL}/quiz/followup`,
-      {
-        question,
-        answer,
-      }
-    );
+  const response = await API.post("/quiz/followup", {
+    question,
+    answer
+  });
 
-    return response.data.followUp;
-  } catch (error) {
-    console.error(error);
-    throw error;
-  }
+  return response.data.followUp;
 }
 
 export async function generateAIRoleTips(role) {
-  try {
-    const response = await axios.post(
-      `${API_URL}/quiz/tips`,
-      {
-        role,
-      }
-    );
-
-    return response.data.tips;
-  } catch (error) {
-    console.error(error);
-    throw error;
-  }
+  const response = await API.post("/quiz/tips", { role });
+  return response.data.tips;
 }

@@ -9,53 +9,56 @@ export const getDashboardStats = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // Get counts
-    const totalExams = await Exam.countDocuments({ userId });
-    const totalInterviews = await InterviewResult.countDocuments({ userId });
-    const totalCodingChallenges = await CodingSubmission.countDocuments({ userId });
+    const [
+      totalExams,
+      totalInterviews,
+      totalCodingChallenges,
+      exams,
+      user,
+      performances,
+      recentExams,
+      recentInterviews,
+      recentCoding
+    ] = await Promise.all([
+      Exam.countDocuments({ userId }),
+      InterviewResult.countDocuments({ userId }),
+      CodingSubmission.countDocuments({ userId }),
+      Exam.find({ userId }).lean(),
+      User.findById(userId),
+      UserPerformance.find({ userId }).lean(),
+      Exam.find({ userId }).sort({ completedAt: -1 }).limit(3).lean(),
+      InterviewResult.find({ userId }).sort({ submittedAt: -1 }).limit(3).lean(),
+      CodingSubmission.find({ userId })
+        .populate("problemId", "title")
+        .sort({ submittedAt: -1 })
+        .limit(3)
+        .lean()
+    ]);
 
-    // Calculate Average Score across exams
-    const exams = await Exam.find({ userId });
-    let averageScore = 0;
+    let averageScore = null;
     if (exams.length > 0) {
       const sum = exams.reduce((acc, curr) => acc + curr.percentage, 0);
       averageScore = Math.round(sum / exams.length);
     }
 
-    // Update user record stats for cache consistency
-    const user = await User.findById(userId);
     if (!user) {
-      return res.status(444).json({ message: "User not found" });
+      return res.status(404).json({ message: "User not found" });
     }
 
     user.totalExams = totalExams;
     user.totalInterviews = totalInterviews;
     user.totalCodingChallenges = totalCodingChallenges;
-    user.averageScore = averageScore;
+    user.averageScore = averageScore ?? 0;
     
     // Calculate practice hours (e.g. 15m per exam, 30m per interview, 30m per code submission)
     const computedHours = Math.round((totalExams * 15 + totalInterviews * 30 + totalCodingChallenges * 30) / 60);
     user.practiceHours = computedHours;
     await user.save();
 
-    // Calculate Completed Topics (averageScore >= 60 in UserPerformance)
-    const performances = await UserPerformance.find({ userId });
     const completedTopics = performances.filter(p => p.averageScore >= 60).map(p => p.topic);
     const completedTopicsCount = completedTopics.length;
     const totalTopicsCount = 43; // total subtopics across 10 categories
     const remainingTopicsCount = Math.max(0, totalTopicsCount - completedTopicsCount);
-
-    // Compile Recent Activities (latest 3 of each, merged and sorted by date)
-    const recentExams = await Exam.find({ userId })
-      .sort({ completedAt: -1 })
-      .limit(3);
-    const recentInterviews = await InterviewResult.find({ userId })
-      .sort({ submittedAt: -1 })
-      .limit(3);
-    const recentCoding = await CodingSubmission.find({ userId })
-      .populate("problemId", "title")
-      .sort({ submittedAt: -1 })
-      .limit(3);
 
     const activities = [];
 
@@ -119,22 +122,31 @@ export const getDashboardStats = async (req, res) => {
     }
 
     // Call Gemini for recommended topics
-    let recommendations;
-    try {
-      recommendations = await getDashboardRecommendations({
-        averageScore,
-        totalExams,
-        totalInterviews,
-        totalCodingChallenges,
-        categoryPerformance
-      });
-    } catch (err) {
-      console.error("Failed to load Gemini recommendations:", err);
-      recommendations = [
-        "Complete a DBMS mock exam to improve database normalization performance.",
-        "Solve a new Arrays challenge under Coding Reviews to build coding streak consistency.",
-        "Re-attempt Frontend Developer interviews to test React Hooks understanding."
+    let recommendations = [];
+    const hasActivity = totalExams + totalInterviews + totalCodingChallenges > 0;
+    if (hasActivity) {
+      const recommendationFallback = [
+        "Complete a focused mock exam in your weakest category.",
+        "Solve one coding challenge under timed conditions.",
+        "Schedule a mock interview and review the feedback afterward."
       ];
+
+      try {
+        recommendations = await Promise.race([
+          getDashboardRecommendations({
+            averageScore,
+            totalExams,
+            totalInterviews,
+            totalCodingChallenges,
+            categoryPerformance
+          }),
+          new Promise((_, reject) => {
+            setTimeout(() => reject(new Error("Recommendation request timed out")), 6000);
+          })
+        ]);
+      } catch {
+        recommendations = recommendationFallback;
+      }
     }
 
     res.json({
@@ -154,6 +166,6 @@ export const getDashboardStats = async (req, res) => {
     });
   } catch (error) {
     console.error("Dashboard Stats Error:", error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: "Dashboard metrics could not be loaded" });
   }
 };

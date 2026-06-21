@@ -1,7 +1,8 @@
 import nodemailer from "nodemailer";
 
 export const sendResetEmail = async (email, token) => {
-  const resetUrl = `http://localhost:5173/reset-password/${token}`;
+  const frontendBaseUrl = (process.env.FRONTEND_BASE_URL || "http://localhost:5173").replace(/\/+$/, "");
+  const resetUrl = `${frontendBaseUrl}/#/reset-password/${token}`;
 
   // Configure transporter using env variables, or create a mock transporter if not configured
   const smtpHost = process.env.SMTP_HOST || "";
@@ -21,15 +22,8 @@ This link expires in 15 minutes.
 
 If you did not request this reset, ignore this email.`;
 
-  // Always log the link to the console for mock testing/seeding purposes
-  console.log(`\n====================================================`);
-  console.log(`[EMAIL SERVICE] Password Reset Link for ${email}:`);
-  console.log(resetUrl);
-  console.log(`====================================================\n`);
-
   if (!smtpUser || !smtpPass) {
-    console.log("[EMAIL SERVICE] SMTP credentials not fully configured in env, logged to console instead.");
-    return { success: true, mock: true };
+    return { success: true, mock: true, resetUrl };
   }
 
   try {
@@ -51,10 +45,8 @@ If you did not request this reset, ignore this email.`;
     };
 
     await transporter.sendMail(mailOptions);
-    console.log(`[EMAIL SERVICE] Reset email sent to ${email}`);
     return { success: true };
   } catch (error) {
-    console.error("[EMAIL SERVICE] Failed to send email via SMTP:", error.message);
     // Graceful fallback: return success with log message so the application flow doesn't crash
     return { success: true, error: error.message };
   }

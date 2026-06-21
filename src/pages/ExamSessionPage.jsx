@@ -126,7 +126,6 @@ export default function ExamSessionPage() {
       toast.success("Exam submitted successfully!");
       navigate(`/exams/result/${res.data._id}`);
     } catch (error) {
-      console.error(error);
       toast.error("Failed to submit exam paper. Try again.");
     } finally {
       setIsSubmitting(false);

@@ -47,7 +47,6 @@ export default function ExamsPage() {
         }
       });
     } catch (error) {
-      console.error(error);
       toast.error(error?.response?.data?.message || "Failed to generate exam. Seed the DB first.");
     } finally {
       setLoading(false);

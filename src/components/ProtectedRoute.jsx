@@ -1,11 +1,16 @@
-import React from "react";
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useApp } from "../context/AppContext";
+import { useAuth } from "../context/AuthContext";
 
-export default function ProtectedRoute() {
-  const { token, loadingUser } = useApp();
+export default function ProtectedRoute({ children }) {
+  const location = useLocation();
+  const { user: appUser, loadingUser } = useApp();
+  const { user: authUser, loading: authLoading } = useAuth();
 
-  if (loadingUser) {
+  const isLoading = authLoading || loadingUser;
+  const currentUser = authUser || appUser;
+
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
         <div className="flex flex-col items-center space-y-4">
@@ -16,9 +21,9 @@ export default function ProtectedRoute() {
     );
   }
 
-  if (!token) {
-    return <Navigate to="/login" replace />;
+  if (!currentUser) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  return <Outlet />;
+  return children ? children : <Outlet />;
 }

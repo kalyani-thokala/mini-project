@@ -22,7 +22,6 @@ export default function Leaderboard() {
       const res = await API.get("/leaderboard");
       setLeaderboardData(res.data);
     } catch (error) {
-      console.error(error);
       toast.error("Failed to load leaderboard statistics");
     } finally {
       setLoading(false);
@@ -48,7 +47,6 @@ export default function Leaderboard() {
       );
       fetchLeaderboard(); // refresh list
     } catch (error) {
-      console.error(error);
       toast.error("Failed to update leaderboard preference");
     } finally {
       setTogglingOpt(false);

@@ -29,7 +29,6 @@ export default function CodingWorkspacePage() {
         const res = await API.get(`/code/problems/${id}`);
         setProblem(res.data);
       } catch (error) {
-        console.error("Failed to load coding problem details:", error);
       } finally {
         setLoading(false);
       }
@@ -60,7 +59,6 @@ export default function CodingWorkspacePage() {
       toast.success("AI Code Review completed successfully!");
       navigate(`/coding/review/${res.data._id}`);
     } catch (error) {
-      console.error(error);
       toast.error("Failed to complete AI review. Try again.");
     } finally {
       setSubmitting(false);

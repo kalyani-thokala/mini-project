@@ -28,7 +28,6 @@ export default function AnalyticsPage() {
         const res = await API.get("/analytics");
         setData(res.data);
       } catch (error) {
-        console.error("Failed to load user analytics:", error);
       } finally {
         setLoading(false);
       }

@@ -16,7 +16,6 @@ export default function CodingReviewPage() {
         const res = await API.get(`/code/submissions/${id}`);
         setSubmission(res.data);
       } catch (error) {
-        console.error("Failed to load code review details:", error);
       } finally {
         setLoading(false);
       }

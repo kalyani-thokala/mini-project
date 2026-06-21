@@ -41,7 +41,6 @@ export default function InterviewsPage() {
         }
       });
     } catch (error) {
-      console.error(error);
       toast.error(error?.response?.data?.message || "Failed to generate interview questions. Try again.");
     } finally {
       setLoading(false);

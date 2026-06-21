@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API_URL =
-  "http://localhost:5000/api/auth";
+  `${(process.env.INTERNAL_API_BASE_URL || `http://localhost:${process.env.PORT || 5000}/api`).replace(/\/+$/, "")}/auth`;
 
 export const registerUser = async (
   userData
