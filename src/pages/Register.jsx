@@ -97,7 +97,7 @@ export default function Register() {
       // Redirect to login page with a flag so Login can show a persistent message
       navigate("/login?registered=1");
     } catch (error) {
-      const message = error?.message || "Registration failed. Try again.";
+      const message = error?.userMessage || error?.message || "Registration failed. Try again.";
       toast.error(message);
     } finally {
       setLoading(false);

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { auth } from "../firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { useApp } from "../context/AppContext";
@@ -16,8 +16,15 @@ export default function Login() {
   const { login } = useApp();
   const { signInWithGoogle, authActionLoading } = useAuth();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const redirectTo = location.state?.from?.pathname || "/dashboard";
-  const [registeredMsg] = useState("");
+  const [registeredMsg, setRegisteredMsg] = useState("");
+
+  useEffect(() => {
+    if (searchParams.get("registered") === "1") {
+      setRegisteredMsg("Registration Successful! Please login to continue.");
+    }
+  }, [searchParams]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -60,7 +67,7 @@ export default function Login() {
       navigate(redirectTo, { replace: true });
     } catch (error) {
       const message =
-        error?.message || "Invalid email or password";
+        error?.userMessage || error?.message || "Invalid email or password";
       toast.error(message);
     } finally {
       setLoading(false);
